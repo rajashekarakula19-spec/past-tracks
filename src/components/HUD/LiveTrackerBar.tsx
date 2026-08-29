@@ -23,7 +23,7 @@ export const LiveTrackerBar: React.FC<LiveTrackerBarProps> = ({
 
   if (isIdle) {
     return (
-      <div className="absolute bottom-5 left-3 z-20 pointer-events-auto">
+      <div className="absolute bottom-6 left-3.5 z-20 pointer-events-auto">
         <button
           onClick={onStart}
           className="py-2.5 px-4 rounded-xl bg-cyan-400 hover:bg-cyan-300 active:scale-95 text-black font-black text-xs tracking-wide shadow-[0_4px_20px_rgba(0,0,0,0.8)] flex items-center gap-2 transition-all border border-white"
@@ -37,7 +37,7 @@ export const LiveTrackerBar: React.FC<LiveTrackerBarProps> = ({
 
   return (
     /* Ultra-Compact Left-Side Mini HUD (Slim, Space-Saving for Mobile) */
-    <div className="absolute bottom-5 left-3 z-20 pointer-events-auto flex flex-col gap-1.5 select-none">
+    <div className="absolute bottom-6 left-3.5 z-20 pointer-events-auto flex flex-col gap-1.5 select-none">
       <div className="w-28 sm:w-36 p-2.5 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.95)] border border-cyan-400/80 bg-[#000000] rounded-xl">
         {/* 1. Speed */}
         <div className="flex flex-col">

@@ -445,15 +445,19 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
-      el.className = 'relative flex items-center justify-center pointer-events-none';
+      el.className = 'relative flex items-center justify-center pointer-events-none z-50';
       el.style.width = '48px';
       el.style.height = '48px';
 
       el.innerHTML = `
-        <div class="absolute inset-0 rounded-full bg-cyan-500/20 animate-ping opacity-75"></div>
-        <div class="absolute w-8 h-8 rounded-full bg-cyan-500/35 border border-cyan-400/60 shadow-[0_0_20px_rgba(0,242,254,0.9)]"></div>
-        <div class="relative w-4 h-4 rounded-full bg-white border-2 border-cyan-500 shadow-md"></div>
-        <div id="puck-heading" class="absolute -top-3.5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-cyan-400 opacity-90 transition-transform duration-300"></div>
+        <!-- High-Visibility Glowing Pulse Ring -->
+        <div class="absolute inset-0 rounded-full bg-blue-500/30 animate-ping opacity-90"></div>
+        <!-- Accuracy Halo -->
+        <div class="absolute w-9 h-9 rounded-full bg-blue-500/25 border-2 border-blue-400/80 shadow-[0_0_25px_rgba(0,122,255,0.9)]"></div>
+        <!-- Vivid Solid Blue Core (Google/Apple Maps style) -->
+        <div class="relative w-5 h-5 rounded-full bg-[#007aff] border-3 border-white shadow-[0_2px_8px_rgba(0,0,0,0.8)] ring-2 ring-blue-400"></div>
+        <!-- Heading Direction Pointer -->
+        <div id="puck-heading" class="absolute -top-3.5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-[#007aff] opacity-95 transition-transform duration-300"></div>
       `;
 
       userMarkerRef.current = new maplibregl.Marker({ element: el })

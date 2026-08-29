@@ -66,7 +66,7 @@ class GPSTrackerService {
   }
 
   /**
-   * Passive high-accuracy location watcher: connects directly to phone hardware GPS
+   * Passive high-accuracy location watcher: connects directly to phone hardware GPS & Chrome Android Fused Location
    */
   public startPassiveLocationWatch(): void {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
@@ -74,35 +74,47 @@ class GPSTrackerService {
       return;
     }
 
-    const geoOptions: PositionOptions = {
+    // Fast initial position query (low accuracy first for instant cellular/Wi-Fi fix within 500ms)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => this.handlePassivePosition(pos),
+      (err) => console.warn('Instant Wi-Fi/Cell fix notice:', err.message),
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 6000 }
+    );
+
+    // Precise continuous hardware GPS stream
+    const highAccuracyOptions: PositionOptions = {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 20000,
+      timeout: 25000,
     };
 
-    // 1. Initial immediate location query
     navigator.geolocation.getCurrentPosition(
       (pos) => this.handlePassivePosition(pos),
       (err) => {
-        console.warn('Initial GPS high accuracy fallback:', err.message);
-        // Fallback with low accuracy if high accuracy times out indoors
+        console.warn('High accuracy initial GPS notice:', err.message);
+        // Retry with moderate timeout
         navigator.geolocation.getCurrentPosition(
-          (fallbackPos) => this.handlePassivePosition(fallbackPos),
-          (fallbackErr) => console.error('Geolocation failed:', fallbackErr.message),
-          { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
+          (retryPos) => this.handlePassivePosition(retryPos),
+          (retryErr) => console.warn('GPS location retry:', retryErr.message),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
         );
       },
-      geoOptions
+      highAccuracyOptions
     );
 
-    // 2. Continuous passive stream for blue location puck
     if (this.passiveWatchId === null) {
       this.passiveWatchId = navigator.geolocation.watchPosition(
         (pos) => this.handlePassivePosition(pos),
-        (err) => console.warn('Continuous GPS watch notice:', err.message),
-        geoOptions
+        (err) => {
+          console.warn('Continuous GPS watch notice:', err.message);
+        },
+        highAccuracyOptions
       );
     }
+  }
+
+  public requestLocationPermission(): void {
+    this.startPassiveLocationWatch();
   }
 
   private handlePassivePosition(pos: GeolocationPosition): void {

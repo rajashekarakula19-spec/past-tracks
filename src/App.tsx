@@ -219,7 +219,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-[#090a0f]">
+    <main className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[#090a0f] select-none touch-none">
       {/* Top Floating Navigation Header */}
       <TopHeader
         currentMode={appMode}

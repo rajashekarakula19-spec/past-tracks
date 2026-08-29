@@ -152,7 +152,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
       </div>
 
       {/* 2. DEDICATED BOTTOM-RIGHT "CENTER ON MY LOCATION" FLOATING BUTTON (Thumb-Friendly on Mobile) */}
-      <div className="absolute bottom-6 right-4 sm:bottom-8 sm:right-6 z-30 pointer-events-auto">
+      <div className="absolute bottom-6 right-3.5 sm:bottom-8 sm:right-6 z-30 pointer-events-auto">
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={onRecenter}
