@@ -6,6 +6,8 @@ Record your journeys, explore your travel history, and replay past routes on an 
 
 ## Landing page
 
+![PastTracks landing page with a welcoming introduction and illustrated journey map](docs/images/landing-page.png)
+
 Visitors arrive at a responsive welcome page with an illustrated example route, an overview of recording and replay, and a three-step introduction. **Open app** and the journey buttons open the existing tracker at `/#app`. Location permission is requested by the tracker, not the landing page. The map on the landing page is a decorative illustration; its journey statistics are sample content.
 
 The landing page uses warm ivory, forest green, and lime accents, with keyboard-accessible navigation, a mobile menu, and reduced-motion support. The tracker is lazy-loaded when opened. Use browser Back to return to the landing page.
