@@ -148,7 +148,7 @@ export const DateFilterDrawer: React.FC<DateFilterDrawerProps> = ({
             </div>
             <div className="saved-journey-main">
               <dl className="journey-metric-pair"><div><dd>{formatDistance(trip.distanceKm)}</dd><dt>Distance</dt></div><div><dd>{formatDuration(trip.durationMs)}</dd><dt>On the move</dt></div></dl>
-              {!isSelectMode && <button className="journey-replay" onClick={() => { onStartReplay(trip); onCloseMobileDrawer?.(); }} aria-label={`Replay ${trip.title}`} title="Replay journey"><Play size={18} fill="currentColor" /></button>}
+              {!isSelectMode && <button className="journey-replay" onClick={() => { onStartReplay(trip); }} aria-label={`Replay ${trip.title}`} title="Replay journey"><Play size={18} fill="currentColor" /></button>}
             </div>
             <div className="saved-journey-footer"><span>{trip.avgSpeedKmh.toFixed(1)} km/h <span>avg. speed</span></span>{!isSelectMode && <div><button className="journey-view-link" onClick={() => handleTripCardClick(trip)}>View route <ArrowUpRight size={13} /></button><button className="journey-icon-button journey-delete" onClick={() => onDeleteTrip(trip.id)} aria-label={`Delete ${trip.title}`} title="Delete journey"><Trash2 size={14} /></button></div>}</div>
           </article>;

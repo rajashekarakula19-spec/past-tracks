@@ -2,7 +2,7 @@
 
 Record your journeys, explore your travel history, and replay past routes on an interactive map. PastTracks is a responsive GPS tracking web app built with React and TypeScript.
 
-**[Open the live app](https://past-tracks.vercel.app)** · [GitHub repository](https://github.com/rajashekarakula19-spec/past-tracks)
+**[Open PastTracks](https://past-tracks.vercel.app)** · [GitHub repository](https://github.com/rajashekarakula19-spec/past-tracks)
 
 ## Landing page
 
@@ -10,13 +10,22 @@ Record your journeys, explore your travel history, and replay past routes on an 
 
 Visitors arrive at a responsive welcome page with an illustrated example route, an overview of recording and replay, and a three-step introduction. **Open app** and the journey buttons open the existing tracker at `/#app`. Location permission is requested by the tracker, not the landing page. The map on the landing page is a decorative illustration; its journey statistics are sample content.
 
-The landing page uses warm ivory, forest green, and lime accents, with keyboard-accessible navigation, a mobile menu, and reduced-motion support. The tracker is lazy-loaded when opened. Use browser Back to return to the landing page.
+The main public link, `https://past-tracks.vercel.app/`, opens the landing page. Choose **Start your journey** or **Open app** to enter the tracker at `/#app`. The logo and **Back to welcome page** link return to the landing page. The app stays mounted during in-page navigation so returning to the welcome page does not reset a recording or selected journey.
+
+The landing page and app use warm ivory, forest green, and lime accents, with keyboard-accessible navigation, a mobile menu, and reduced-motion support. The tracker is lazy-loaded when first opened.
 
 ### PastTracks Garden map style
 
 The history sidebar and selected-trip details use matching ivory journey cards with distance, time, and lime replay controls. Date filters, multi-select deletion, and exports remain available.
 
 The tracker opens with **PastTracks Garden**, a custom vector map inspired by the welcome page: ivory roads, sage parks and buildings, muted blue water, and forest-green routes. Open **Change map style** (the layers icon) to switch between Garden and the existing street, satellite, dark, and 3D vector styles. Real map tiles and labels are provided by OpenFreeMap / OpenMapTiles / OpenStreetMap and require internet access.
+
+## App navigation
+
+- **Record:** Start a journey, view distance/time/speed, pause or resume, then finish and save.
+- **Journeys:** Browse dates, open a saved route, export your history, or replay a trip.
+- **Map tools:** Change styles, toggle 3D and routes, zoom, face north, or recenter on your location.
+- **More options:** Try a simulated journey, access developer controls, or return to the welcome page.
 
 ## Features
 

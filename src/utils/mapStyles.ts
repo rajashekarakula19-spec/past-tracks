@@ -10,7 +10,7 @@ export const MAP_STYLES: MapStyleOption[] = [
   { id: 'pasttracks-garden', name: 'PastTracks Garden', url: gardenMapStyle, previewColor: '#c3d1b6' },
   {
     id: 'google-streets',
-    name: 'Google Maps (Streets & Buildings)',
+    name: 'Google Streets',
     url: {
       version: 8,
       sources: {
@@ -40,7 +40,7 @@ export const MAP_STYLES: MapStyleOption[] = [
   },
   {
     id: 'google-hybrid',
-    name: 'Google Satellite & Buildings',
+    name: 'Satellite',
     url: {
       version: 8,
       sources: {
@@ -70,13 +70,13 @@ export const MAP_STYLES: MapStyleOption[] = [
   },
   {
     id: 'cyberpunk',
-    name: 'Cyber Dark (Neon)',
+    name: 'Night',
     url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
     previewColor: '#090a0f',
   },
   {
     id: 'buildings-3d',
-    name: '3D Vector City',
+    name: 'City',
     url: 'https://tiles.openfreemap.org/styles/liberty',
     previewColor: '#1e293b',
   },

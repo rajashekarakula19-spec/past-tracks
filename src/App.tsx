@@ -13,6 +13,7 @@ import { gpsTracker } from './services/gpsTracker';
 import { gpsSimulator, SimulationPreset } from './services/gpsSimulator';
 import { getAllTrips, groupTripsByDate, deleteTrip, clearAllTrips, reseedStreetDemoTrips } from './services/storage';
 import { formatDateKey } from './utils/geoUtils';
+import './app-ui.css';
 
 export const App: React.FC = () => {
   const todayKey = formatDateKey(Date.now());
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
 
     const unsubscribeLocation = gpsTracker.subscribeUserLocation((loc) => {
       setUserLocation(loc);
+      setLiveStats(gpsTracker.getStats());
     });
 
     return () => {
@@ -110,7 +112,7 @@ export const App: React.FC = () => {
           particleCount: 80,
           spread: 70,
           origin: { y: 0.7 },
-          colors: ['#00f2fe', '#00ff88', '#b000ff', '#ff007f'],
+          colors: ['#244c3a', '#d7edac', '#8da864', '#bed7d5'],
         });
       } catch {}
       await refreshTrips();
@@ -219,12 +221,13 @@ export const App: React.FC = () => {
   };
 
   return (
-    <main className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[#090a0f] select-none">
+    <main className={`tracker-app app-mode-${appMode === 'replay' ? 'replay' : appMode === 'history' ? 'history' : selectedTrip ? 'detail' : liveStats.status !== 'idle' ? 'recording' : 'record'} fixed inset-0 w-full h-[100dvh] overflow-hidden select-none`}>
       {/* Top Floating Navigation Header */}
       <TopHeader
         currentMode={appMode}
         onSelectMode={(mode) => {
           setAppMode(mode);
+          if (mode === 'live') setSelectedTrip(null);
           if (mode !== 'replay') {
             setIsReplaying(false);
             setReplayingTrip(null);
@@ -256,13 +259,15 @@ export const App: React.FC = () => {
       />
 
       {/* Mode 1: Live Phone GPS Tracking HUD */}
-      {appMode === 'live' && (
+      {appMode === 'live' && !selectedTrip && (
         <LiveTrackerBar
           stats={liveStats}
           onStart={handleStartLive}
           onPause={handlePauseLive}
           onResume={handleResumeLive}
           onStop={handleStopAndSaveLive}
+          onBrowseJourneys={() => { setSelectedTrip(null); setAppMode('history'); }}
+          isSimulating={isSimulating}
         />
       )}
 

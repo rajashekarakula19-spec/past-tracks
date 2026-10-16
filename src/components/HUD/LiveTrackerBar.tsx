@@ -1,121 +1,31 @@
-import React from 'react';
-import { Play, Pause, Square, Gauge, Activity, Clock, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Pause, Square, Route, ArrowUpRight, LocateFixed, ShieldCheck } from 'lucide-react';
 import { LiveTrackingStats } from '../../types/track';
 import { formatDuration } from '../../utils/geoUtils';
 
 interface LiveTrackerBarProps {
   stats: LiveTrackingStats;
-  onStart: () => void;
+  onStart: () => void | Promise<void>;
   onPause: () => void;
   onResume: () => void;
-  onStop: () => void;
+  onStop: () => void | Promise<void>;
+  onBrowseJourneys: () => void;
+  isSimulating?: boolean;
 }
 
-export const LiveTrackerBar: React.FC<LiveTrackerBarProps> = ({
-  stats,
-  onStart,
-  onPause,
-  onResume,
-  onStop,
-}) => {
-  const isTracking = stats.status === 'recording';
+export const LiveTrackerBar: React.FC<LiveTrackerBarProps> = ({ stats, onStart, onPause, onResume, onStop, onBrowseJourneys, isSimulating }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const isIdle = stats.status === 'idle';
-
-  if (isIdle) {
-    return (
-      <div className="absolute bottom-6 left-3.5 z-20 pointer-events-auto">
-        <button
-          onClick={onStart}
-          className="py-2.5 px-4 rounded-xl bg-cyan-400 hover:bg-cyan-300 active:scale-95 text-black font-black text-xs tracking-wide shadow-[0_4px_20px_rgba(0,0,0,0.8)] flex items-center gap-2 transition-all border border-white"
-        >
-          <Zap className="w-4 h-4 fill-black text-black" />
-          <span>START LIVE TRACKING</span>
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    /* Ultra-Compact Left-Side Mini HUD (Slim, Space-Saving for Mobile) */
-    <div className="absolute bottom-6 left-3.5 z-20 pointer-events-auto flex flex-col gap-1.5 select-none">
-      <div className="w-28 sm:w-36 p-2.5 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.95)] border border-cyan-400/80 bg-[#000000] rounded-xl">
-        {/* 1. Speed */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1 text-[9px] font-black text-cyan-300 uppercase">
-            <Gauge className="w-2.5 h-2.5 text-cyan-400 stroke-[3]" />
-            <span>SPEED</span>
-          </div>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white leading-none">
-              {stats.currentSpeedKmh.toFixed(1)}
-            </span>
-            <span className="text-[9px] font-bold text-cyan-300">km/h</span>
-          </div>
-        </div>
-
-        <div className="h-px w-full bg-white/20" />
-
-        {/* 2. Distance */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1 text-[9px] font-black text-emerald-300 uppercase">
-            <Activity className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-            <span>DIST</span>
-          </div>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white leading-none">
-              {stats.distanceKm.toFixed(2)}
-            </span>
-            <span className="text-[9px] font-bold text-emerald-300">km</span>
-          </div>
-        </div>
-
-        <div className="h-px w-full bg-white/20" />
-
-        {/* 3. Duration / Time */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1 text-[9px] font-black text-purple-300 uppercase">
-            <Clock className="w-2.5 h-2.5 text-purple-400 stroke-[3]" />
-            <span>TIME</span>
-          </div>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-sm sm:text-base font-black font-mono tracking-tight text-white leading-none">
-              {formatDuration(stats.durationSeconds * 1000)}
-            </span>
-          </div>
-        </div>
-
-        <div className="h-px w-full bg-white/20" />
-
-        {/* 4. Action Buttons (Pause & Stop) */}
-        <div className="flex items-center gap-1 pt-0.5">
-          {isTracking ? (
-            <button
-              onClick={onPause}
-              title="Pause"
-              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-bold border border-white/30 transition-colors flex items-center justify-center shadow-md"
-            >
-              <Pause className="w-3.5 h-3.5 stroke-[3]" />
-            </button>
-          ) : (
-            <button
-              onClick={onResume}
-              title="Resume"
-              className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400 transition-colors flex items-center justify-center shadow-md"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-            </button>
-          )}
-
-          <button
-            onClick={onStop}
-            title="Stop & Save"
-            className="flex-1 py-1.5 px-1.5 rounded-lg bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black text-[10px] flex items-center justify-center gap-1 shadow-md transition-all border border-red-400 uppercase tracking-tight"
-          >
-            <Square className="w-2.5 h-2.5 fill-current" />
-            <span>STOP</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const isTracking = stats.status === 'recording';
+  const runAction = async (action: () => void | Promise<void>) => {
+    setBusy(true); setError('');
+    try { await action(); } catch { setError('Something went wrong. Please try again.'); } finally { setBusy(false); }
+  };
+  return <section className="activity-panel" aria-label="Journey recorder">
+    <div className="activity-heading"><span className="activity-symbol"><Route size={22} /></span><div><span className="app-kicker">{isSimulating ? 'DEMO JOURNEY' : isIdle ? 'YOUR NEXT CHAPTER' : 'YOUR JOURNEY'}</span><h2>{isIdle ? 'Take the scenic way.' : isTracking ? 'You’re on your way.' : 'A moment to pause.'}</h2></div>{!isIdle && <span className={`activity-status ${isTracking ? 'is-recording' : ''}`} role="status"><span />{isTracking ? 'Recording' : 'Paused'}</span>}</div>
+    {isIdle ? <><p className="activity-intro">A morning walk or a new adventure. Keep a little piece of wherever you go.</p><div className="activity-ready"><LocateFixed size={15} /><span>{stats.accuracy > 0 ? 'Location found. You’re ready to explore.' : 'Allow location access to record your route.'}</span></div><button className="app-primary-button activity-start" onClick={() => runAction(onStart)} disabled={busy}><Play size={16} fill="currentColor" />{busy ? 'Getting ready…' : 'Start a journey'}<ArrowUpRight size={18} /></button><button className="activity-browse" onClick={onBrowseJourneys}>Explore your saved journeys <ArrowUpRight size={13} /></button></> : <><dl className="activity-metrics"><div><dd>{stats.distanceKm.toFixed(2)} <small>km</small></dd><dt>Distance</dt></div><div><dd>{formatDuration(stats.durationSeconds * 1000)}</dd><dt>Time elapsed</dt></div><div><dd>{stats.currentSpeedKmh.toFixed(1)} <small>km/h</small></dd><dt>Current speed</dt></div></dl>{stats.pointsCount === 0 && <p className="activity-gps-note" role="status">Waiting for a GPS signal. Check that location access is allowed.</p>}<div className="activity-buttons"><button className="app-secondary-button" disabled={busy} onClick={isTracking ? onPause : onResume}>{isTracking ? <Pause size={16} /> : <Play size={16} />}{isTracking ? 'Pause' : 'Resume'}</button><button className="app-primary-button" onClick={() => runAction(onStop)} disabled={busy}><Square size={13} fill="currentColor" />{busy ? 'Saving…' : 'Finish & save'}</button></div></>}
+    {error && <p className="activity-error" role="alert">{error}</p>}
+    <div className="activity-footnote"><ShieldCheck size={12} />{isIdle ? 'No account needed. Saved in your browser.' : 'Keep this tab open while you explore.'}</div>
+  </section>;
 };
