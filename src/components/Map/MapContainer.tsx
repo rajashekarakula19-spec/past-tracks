@@ -641,8 +641,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${currentStyle.id === 'pasttracks-garden' ? 'garden-map' : ''}`}>
-      {/* 3D WebGL Canvas */}
-      <div ref={mapContainerRef} className="w-full h-full bg-[#090a0f]" />
+      {/* Keep map markers and popups below app panels in their own stacking context. */}
+      <div ref={mapContainerRef} className="relative isolate w-full h-full bg-[#090a0f]" />
 
       {currentStyle.id === 'pasttracks-garden' && (
         <div className="absolute bottom-0 left-0 z-20 bg-[#f8f9f2]/95 px-2 py-0.5 text-[9px] text-[#52694f] pointer-events-auto">
