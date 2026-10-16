@@ -59,6 +59,7 @@ export interface LiveTrackingStats {
   isWakeLocked: boolean;
   status: 'idle' | 'recording' | 'paused';
   isInsideBuilding?: boolean;
+  idleStops?: IdleStop[];
 }
 
 export type MapStyleMode = 'cyberpunk' | 'satellite' | 'streets' | 'google-streets' | 'google-hybrid' | 'buildings-3d';

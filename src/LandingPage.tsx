@@ -21,7 +21,7 @@ function JourneyMap() {
     </svg>
     <div className="map-label"><span className="live-dot"/> A LITTLE EVERYDAY EXPLORATION</div>
     <div className="destination"><MapPin size={15}/> A new perspective</div>
-    <div className="journey-card"><div className="journey-card-top"><span className="route-icon"><Route size={22}/></span><div><strong>The scenic way home</strong><span>Illustrative journey · San Francisco</span></div><span className="saved-tag">Saved</span></div><div className="journey-metrics"><div><strong>6.8 <small>km</small></strong><span>Distance</span></div><div><strong>32 <small>min</small></strong><span>On the move</span></div><a href={appLink} aria-label="Open the app to explore journey replay"><Play size={17} fill="currentColor"/></a></div></div>
+    <div className="journey-card"><div className="journey-card-top"><span className="route-icon"><Route size={22}/></span><div><strong>The scenic way home</strong><span>Illustrative journey · San Francisco</span></div><span className="saved-tag">Saved</span></div><div className="journey-metrics"><div><strong>4.2 <small>mi</small></strong><span>Distance</span></div><div><strong>32 <small>min</small></strong><span>On the move</span></div><a href={appLink} aria-label="Open the app to explore journey replay"><Play size={17} fill="currentColor"/></a></div></div>
     <div className="map-coordinate">37.7749° N &nbsp; 122.4194° W <Compass size={20}/></div>
   </div>;
 }

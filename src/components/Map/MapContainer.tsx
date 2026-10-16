@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl, { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { GPSPoint, TripSession } from '../../types/track';
+import { GPSPoint, TripSession, IdleStop } from '../../types/track';
 import { MapControls } from './MapControls';
 import { MAP_STYLES, MapStyleOption } from '../../utils/mapStyles';
-import { computeBoundingBox } from '../../utils/geoUtils';
+import { computeBoundingBox, getTripStops, formatStopTimeRange, formatDuration } from '../../utils/geoUtils';
 
 interface MapContainerProps {
   livePoints: GPSPoint[];
@@ -18,6 +18,8 @@ interface MapContainerProps {
   isRouteVisible: boolean;
   onToggleRouteVisibility: () => void;
   userLocation: GPSPoint | null;
+  liveStops?: IdleStop[];
+  focusedStop?: IdleStop | null;
 }
 
 const LIVE_SOURCE_ID = 'live-trace-source';
@@ -41,6 +43,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   isRouteVisible,
   onToggleRouteVisibility,
   userLocation,
+  liveStops,
+  focusedStop,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -501,58 +505,73 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
 
-  // Render Idle Stop Dots & Distance Cube Dwell Zones on Map
+  // Numbered place visits use the same times in the map and journey cards.
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     const map = mapRef.current;
-
-    // Clear previous stop markers
-    stopMarkersRef.current.forEach((m) => m.remove());
+    stopMarkersRef.current.forEach(marker => marker.remove());
     stopMarkersRef.current = [];
-
     if (!isRouteVisible) return;
 
-    const tripsToShow = selectedTrip ? [selectedTrip] : selectedDate ? pastTrips.filter((t) => t.dateKey === selectedDate) : pastTrips;
+    const tripsToShow = selectedTrip ? [selectedTrip] : selectedDate ? pastTrips.filter(trip => trip.dateKey === selectedDate) : pastTrips;
+    const groups = tripsToShow.map(trip => ({ title: trip.title, stops: getTripStops(trip) }));
+    if (liveStops?.length) groups.push({ title: 'Current journey', stops: liveStops });
 
-    tripsToShow.forEach((trip) => {
-      if (!trip.idleStops || trip.idleStops.length === 0) return;
+    groups.forEach(group => group.stops.forEach((stop, index) => {
+      const el = document.createElement('button');
+      el.className = 'stop-checkpoint-marker';
+      el.type = 'button';
+      el.textContent = String(index + 1);
+      el.dataset.checkpointId = stop.id;
+      el.setAttribute('aria-label', `Checkpoint ${index + 1}: ${formatStopTimeRange(stop.startTime, stop.endTime)}`);
+      el.title = `Stop ${index + 1} · ${formatStopTimeRange(stop.startTime, stop.endTime)}`;
 
-      trip.idleStops.forEach((stop) => {
-        const el = document.createElement('div');
-        el.className = 'group relative flex items-center justify-center cursor-pointer transition-transform hover:scale-150';
-        el.style.width = '24px';
-        el.style.height = '24px';
+      const content = document.createElement('div');
+      content.className = 'stop-checkpoint-popup';
+      const heading = document.createElement('strong');
+      heading.textContent = `Checkpoint ${index + 1}`;
+      const title = document.createElement('span');
+      title.textContent = group.title;
+      const time = document.createElement('p');
+      time.textContent = formatStopTimeRange(stop.startTime, stop.endTime);
+      const duration = document.createElement('span');
+      duration.textContent = `${formatDuration(stop.durationSeconds * 1000)} in this area`;
+      const timezone = document.createElement('small');
+      timezone.textContent = `Times in ${Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}`;
+      content.append(heading, title, time, duration, timezone);
+      const popup = new maplibregl.Popup({ offset: 20, className: 'checkpoint-popup', maxWidth: '270px' }).setDOMContent(content);
+      const marker = new maplibregl.Marker({ element: el }).setLngLat([stop.lng, stop.lat]).setPopup(popup).addTo(map);
+      stopMarkersRef.current.push(marker);
+    }));
+    return () => { stopMarkersRef.current.forEach(marker => marker.remove()); stopMarkersRef.current = []; };
+  }, [selectedTrip, selectedDate, pastTrips, mapLoaded, isRouteVisible, liveStops]);
 
-        el.innerHTML = `
-          <!-- Noticeable Ambient Pulse Ring -->
-          <div class="absolute w-5 h-5 rounded-full bg-amber-400/40 animate-ping pointer-events-none"></div>
-          <!-- Small High-Contrast Noticeable Neon Dot -->
-          <div class="relative w-3.5 h-3.5 rounded-full bg-[#ff9100] border-2 border-white shadow-[0_0_10px_#ff9100,0_0_20px_rgba(255,145,0,0.6)] ring-1 ring-black/50"></div>
-        `;
-
-        const popup = new maplibregl.Popup({ offset: 12, closeButton: false }).setHTML(`
-          <div style="background: rgba(10,10,15,0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255,145,0,0.5); border-radius: 12px; padding: 10px 14px; font-family: monospace; color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.85); min-width: 170px;">
-            <div style="font-size: 11px; font-weight: bold; color: #ff9100; display: flex; items-center; gap: 4px;">
-              ⏱️ Stop / Dwell Point
-            </div>
-            <div style="font-size: 11px; font-weight: 600; color: #ffffff; margin-top: 5px;">
-              ${stop.label}
-            </div>
-            <div style="font-size: 9px; color: #a1a1aa; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); pt-1;">
-              Area: ~${stop.radiusMeters || 15}m cube
-            </div>
-          </div>
-        `);
-
-        const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([stop.lng, stop.lat])
-          .setPopup(popup)
-          .addTo(map);
-
-        stopMarkersRef.current.push(marker);
-      });
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded || !focusedStop || !isRouteVisible) return;
+    const marker = stopMarkersRef.current.find(item => item.getElement().dataset.checkpointId === focusedStop.id);
+    if (!marker) return;
+    setIsGpsLocked(false);
+    stopMarkersRef.current.forEach(item => item.getPopup()?.remove());
+    marker.togglePopup();
+    let offset: [number, number] = [-60, 0];
+    if (window.innerWidth < 640) {
+      const headerBottom = document.querySelector('.app-header')?.getBoundingClientRect().bottom || 125;
+      const panelTop = document.querySelector('.journey-detail, .activity-panel')?.getBoundingClientRect().top || window.innerHeight - 30;
+      const popupHeight = marker.getPopup()?.getElement()?.getBoundingClientRect().height || 170;
+      const desiredY = headerBottom + popupHeight + 30;
+      const canFitPopup = desiredY + 25 < panelTop - 15;
+      // On short screens the selected row already shows all times; focus the
+      // map pin without squeezing a second copy behind the header or card.
+      if (!canFitPopup) marker.getPopup()?.remove();
+      const markerY = canFitPopup ? desiredY : (headerBottom + panelTop) / 2;
+      offset = [-20, markerY - window.innerHeight / 2];
+    }
+    mapRef.current.flyTo({
+      center: [focusedStop.lng, focusedStop.lat], zoom: 16, duration: 700, offset,
+      padding: { top: 0, bottom: 0, left: 0, right: 0 },
     });
-  }, [selectedTrip, selectedDate, pastTrips, mapLoaded, isRouteVisible]);
+  }, [focusedStop, mapLoaded, isRouteVisible]);
+
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;

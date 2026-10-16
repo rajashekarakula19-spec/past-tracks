@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar as CalendarIcon, MapPin, Eye, EyeOff, Play, X, Trash2, CheckSquare, Square as SquareIcon, Route, Compass, ArrowUpRight, Download, ShieldCheck } from 'lucide-react';
 import { TripSession, DateGroupedTrips, LiveTrackingStats } from '../../types/track';
-import { formatHumanDate, formatDistance, formatDuration, formatDateKey } from '../../utils/geoUtils';
+import { formatHumanDate, formatDistance, formatDuration, formatDateKey, formatSpeed, getTripStops } from '../../utils/geoUtils';
 import './journey-panel.css';
 
 interface DateFilterDrawerProps {
@@ -134,23 +134,24 @@ export const DateFilterDrawer: React.FC<DateFilterDrawerProps> = ({
 
       <div className="journey-list">
         <div className="journey-list-label"><span>{selectedDate ? formatHumanDate(selectedDate) : 'All your journeys'}</span><span>{activeTrips.length} {activeTrips.length === 1 ? 'trip' : 'trips'}</span></div>
-        {isTodaySelected && isLiveRecording && liveStats && !isSelectMode && <div className="journey-live"><span className="journey-dot is-recording" /><div><strong>A new story is unfolding</strong><span>{formatDistance(liveStats.distanceKm)} · {formatDuration(liveStats.durationSeconds * 1000)} · {liveStats.currentSpeedKmh.toFixed(1)} km/h</span></div></div>}
+        {isTodaySelected && isLiveRecording && liveStats && !isSelectMode && <div className="journey-live"><span className="journey-dot is-recording" /><div><strong>A new story is unfolding</strong><span>{formatDistance(liveStats.distanceKm)} · {formatDuration(liveStats.durationSeconds * 1000)} · {formatSpeed(liveStats.currentSpeedKmh)}</span></div></div>}
         {activeTrips.length === 0 ? <div className="journey-empty"><span className="journey-icon"><MapPin size={26} /></span><h3>{isTodaySelected ? 'A fresh day, a new route.' : 'No journeys here just yet.'}</h3><p>{isTodaySelected ? 'Your next journey starts with a single step. Head out and make a memory.' : 'Choose another date to revisit a journey.'}</p>{isTodaySelected && !isLiveRecording && onStartLiveTracking && <button className="journey-primary" onClick={onStartLiveTracking}><Play size={14} />Start a journey</button>}</div> : activeTrips.map((trip) => {
           const isSelected = selectedTrip?.id === trip.id;
           const isChecked = selectedTripIds.has(trip.id);
+          const checkpointCount = getTripStops(trip).length;
           return <article key={trip.id} className={`saved-journey ${isSelected || isChecked ? 'is-selected' : ''}`}>
             <div className="saved-journey-header">
               <button className="saved-journey-open" onClick={() => handleTripCardClick(trip)} aria-label={isSelectMode ? `${isChecked ? 'Deselect' : 'Select'} ${trip.title}` : `View ${trip.title} on map`} aria-pressed={isSelectMode ? isChecked : undefined}>
                 <span className="journey-icon">{isSelectMode ? isChecked ? <CheckSquare size={21} /> : <SquareIcon size={21} /> : <Route size={22} />}</span>
-                <span className="saved-journey-title"><strong>{trip.title}</strong><span>{new Date(trip.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {trip.isSimulated ? 'Sample journey' : 'Saved journey'}</span></span>
+                <span className="saved-journey-title"><strong>{trip.title}</strong><span>{new Date(trip.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {trip.isSimulated ? 'Sample journey' : 'Saved journey'}{checkpointCount > 0 && ` · ${checkpointCount} ${checkpointCount === 1 ? 'checkpoint' : 'checkpoints'}`}</span></span>
               </button>
               <span className="journey-mode">{trip.transportMode}</span>
             </div>
             <div className="saved-journey-main">
-              <dl className="journey-metric-pair"><div><dd>{formatDistance(trip.distanceKm)}</dd><dt>Distance</dt></div><div><dd>{formatDuration(trip.durationMs)}</dd><dt>On the move</dt></div></dl>
+              <dl className="journey-metric-pair"><div><dd>{formatDistance(trip.distanceKm)}</dd><dt>Distance</dt></div><div><dd>{formatDuration(trip.durationMs)}</dd><dt>Journey time</dt></div></dl>
               {!isSelectMode && <button className="journey-replay" onClick={() => { onStartReplay(trip); }} aria-label={`Replay ${trip.title}`} title="Replay journey"><Play size={18} fill="currentColor" /></button>}
             </div>
-            <div className="saved-journey-footer"><span>{trip.avgSpeedKmh.toFixed(1)} km/h <span>avg. speed</span></span>{!isSelectMode && <div><button className="journey-view-link" onClick={() => handleTripCardClick(trip)}>View route <ArrowUpRight size={13} /></button><button className="journey-icon-button journey-delete" onClick={() => onDeleteTrip(trip.id)} aria-label={`Delete ${trip.title}`} title="Delete journey"><Trash2 size={14} /></button></div>}</div>
+            <div className="saved-journey-footer"><span>{formatSpeed(trip.avgSpeedKmh)} <span>avg. speed</span></span>{!isSelectMode && <div><button className="journey-view-link" onClick={() => handleTripCardClick(trip)}>View route <ArrowUpRight size={13} /></button><button className="journey-icon-button journey-delete" onClick={() => onDeleteTrip(trip.id)} aria-label={`Delete ${trip.title}`} title="Delete journey"><Trash2 size={14} /></button></div>}</div>
           </article>;
         })}
       </div>

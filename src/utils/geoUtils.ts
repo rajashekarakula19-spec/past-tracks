@@ -1,4 +1,4 @@
-import { GPSPoint, TripSession, TransportMode } from '../types/track';
+import { GPSPoint, TripSession, TransportMode, IdleStop } from '../types/track';
 
 /**
  * Calculates distance between two [lng, lat] coordinates in kilometers using Haversine formula
@@ -123,14 +123,33 @@ export function formatDuration(durationMs: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
-/**
- * Format distance to km or meters
- */
+export const KM_PER_MILE = 1.609344;
+
+export function toMiles(kilometers: number): number {
+  return kilometers / KM_PER_MILE;
+}
+
 export function formatDistance(distanceKm: number): string {
-  if (distanceKm < 1) {
-    return `${Math.round(distanceKm * 1000)} m`;
-  }
-  return `${distanceKm.toFixed(2)} km`;
+  const miles = toMiles(distanceKm);
+  return `${miles > 0 && miles < 0.01 ? '<0.01' : miles.toFixed(2)} mi`;
+}
+
+export function formatSpeed(speedKmh: number): string {
+  return `${toMiles(speedKmh).toFixed(1)} mph`;
+}
+
+/** A place visit may include walking around within the same area. */
+export const STOP_RADIUS_METERS = 100;
+export const STOP_MIN_DURATION_SECONDS = 5 * 60;
+export const STOP_MAX_OBSERVATION_GAP_MS = 2 * 60 * 1000;
+
+export function formatStopTimeRange(startTime: number, endTime: number): string {
+  const crossDate = formatDateKey(startTime) !== formatDateKey(endTime);
+  const options: Intl.DateTimeFormatOptions = {
+    hour: 'numeric', minute: '2-digit', hour12: true,
+    ...(crossDate ? { month: 'short', day: 'numeric' } : {}),
+  };
+  return `${new Date(startTime).toLocaleString(undefined, options)} – ${new Date(endTime).toLocaleString(undefined, options)}`;
 }
 
 /**
@@ -201,69 +220,68 @@ export function tripsToFeatureCollection(trips: TripSession[]): GeoJSON.FeatureC
 }
 
 /**
- * Detect significant idle stops using a Spatial Distance Cube / Bounding Area
- * (e.g. User stayed within a 30m x 30m building/area for 45+ seconds)
+ * Find visits lasting 5+ minutes within a 100-meter radius of the arrival fix.
+ * Walking around inside that area counts. Gaps over two minutes split visits;
+ * the detector never invents arrival/departure times across missing GPS data.
  */
 export function detectIdleStops(
   points: GPSPoint[],
-  cubeRadiusMeters: number = 30,
-  minStopDurationSec: number = 45
-): import('../types/track').IdleStop[] {
-  if (points.length < 2) return [];
+  radiusMeters: number = STOP_RADIUS_METERS,
+  minStopDurationSec: number = STOP_MIN_DURATION_SECONDS
+): IdleStop[] {
+  const stops: IdleStop[] = [];
+  let cluster: GPSPoint[] = [];
+  let previousTimestamp = -Infinity;
 
-  const stops: import('../types/track').IdleStop[] = [];
-  let clusterStartIndex = 0;
+  const finishCluster = () => {
+    if (cluster.length < 2) return;
+    const start = cluster[0];
+    const end = cluster[cluster.length - 1];
+    const durationSeconds = Math.floor((end.timestamp - start.timestamp) / 1000);
+    if (durationSeconds < minStopDurationSec) return;
+    const lat = cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length;
+    const lng = cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length;
+    const spread = cluster.reduce((max, p) => Math.max(max, calculateDistanceKm(lat, lng, p.lat, p.lng) * 1000), 5);
+    stops.push({
+      id: `stop_${start.timestamp}`, lat, lng,
+      startTime: start.timestamp, endTime: end.timestamp, durationSeconds,
+      radiusMeters: Math.round(spread), pointCount: cluster.length,
+      label: `${formatStopTimeRange(start.timestamp, end.timestamp)} (${formatDuration(durationSeconds * 1000)})`,
+    });
+  };
 
-  for (let i = 1; i < points.length; i++) {
-    const startPt = points[clusterStartIndex];
-    const curPt = points[i];
-    const distMeters = calculateDistanceKm(startPt.lat, startPt.lng, curPt.lat, curPt.lng) * 1000;
-
-    // If moved outside the distance cube or at the end of the trip
-    if (distMeters > cubeRadiusMeters || i === points.length - 1) {
-      const endIdx = distMeters > cubeRadiusMeters ? i - 1 : i;
-      const durationSec = Math.round((points[endIdx].timestamp - startPt.timestamp) / 1000);
-
-      // If stayed in the distance cube longer than threshold
-      if (durationSec >= minStopDurationSec && endIdx > clusterStartIndex) {
-        const clusterPts = points.slice(clusterStartIndex, endIdx + 1);
-        
-        // Calculate building/room centroid
-        const avgLng = clusterPts.reduce((sum, p) => sum + p.lng, 0) / clusterPts.length;
-        const avgLat = clusterPts.reduce((sum, p) => sum + p.lat, 0) / clusterPts.length;
-
-        // Calculate actual observed radius of movement inside the cube
-        let maxSpreadMeters = 5;
-        clusterPts.forEach((p) => {
-          const d = calculateDistanceKm(avgLat, avgLng, p.lat, p.lng) * 1000;
-          if (d > maxSpreadMeters) maxSpreadMeters = d;
-        });
-
-        const startStr = new Date(startPt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const endStr = new Date(points[endIdx].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const durationFormatted =
-          durationSec >= 60
-            ? `${Math.floor(durationSec / 60)}m ${durationSec % 60 > 0 ? `${durationSec % 60}s` : ''}`
-            : `${durationSec}s`;
-
-        stops.push({
-          id: `stop_${startPt.timestamp}`,
-          lng: Math.round(avgLng * 1000000) / 1000000,
-          lat: Math.round(avgLat * 1000000) / 1000000,
-          startTime: startPt.timestamp,
-          endTime: points[endIdx].timestamp,
-          durationSeconds: durationSec,
-          radiusMeters: Math.round(maxSpreadMeters),
-          label: `${startStr} — ${endStr} (${durationFormatted.trim()})`,
-          pointCount: clusterPts.length,
-        });
-      }
-
-      clusterStartIndex = i;
+  for (const point of points) {
+    if (!Number.isFinite(point.timestamp) || !Number.isFinite(point.lat) || !Number.isFinite(point.lng) || Math.abs(point.lat) > 90 || Math.abs(point.lng) > 180 || point.accuracy > 60) {
+      finishCluster(); cluster = []; previousTimestamp = -Infinity; continue;
     }
+    if (point.timestamp <= previousTimestamp) continue;
+    const previous = cluster[cluster.length - 1];
+    const anchor = cluster[0];
+    if (previous && (point.timestamp - previous.timestamp > STOP_MAX_OBSERVATION_GAP_MS || calculateDistanceKm(anchor.lat, anchor.lng, point.lat, point.lng) * 1000 > radiusMeters)) {
+      finishCluster(); cluster = [];
+    }
+    cluster.push(point);
+    previousTimestamp = point.timestamp;
   }
+  finishCluster();
+  return stops;
+}
 
+const tripStopsCache = new WeakMap<TripSession, IdleStop[]>();
+
+/** Prefer newly detected area visits; retain qualifying older saved checkpoints. */
+export function getTripStops(trip: TripSession): IdleStop[] {
+  const cached = tripStopsCache.get(trip);
+  if (cached) return cached;
+  const detected = detectIdleStops(trip.points);
+  const legacy = (trip.idleStops || []).filter(stop =>
+    stop.durationSeconds >= STOP_MIN_DURATION_SECONDS &&
+    Number.isFinite(stop.startTime) && Number.isFinite(stop.endTime) &&
+    stop.endTime > stop.startTime && Number.isFinite(stop.lat) && Number.isFinite(stop.lng) &&
+    !detected.some(other => stop.startTime <= other.endTime && stop.endTime >= other.startTime)
+  );
+  const stops = [...detected, ...legacy].sort((a, b) => a.startTime - b.startTime);
+  tripStopsCache.set(trip, stops);
   return stops;
 }
 

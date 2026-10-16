@@ -8,7 +8,7 @@ import { TripStatsCard } from './components/HUD/TripStatsCard';
 import { HistoryScrubber } from './components/Timeline/HistoryScrubber';
 import { SimulatorModal } from './components/HUD/SimulatorModal';
 import { DeveloperController } from './components/HUD/DeveloperController';
-import { GPSPoint, TripSession, AppMode, LiveTrackingStats } from './types/track';
+import { GPSPoint, TripSession, AppMode, LiveTrackingStats, IdleStop } from './types/track';
 import { gpsTracker } from './services/gpsTracker';
 import { gpsSimulator, SimulationPreset } from './services/gpsSimulator';
 import { getAllTrips, groupTripsByDate, deleteTrip, clearAllTrips, reseedStreetDemoTrips } from './services/storage';
@@ -17,6 +17,8 @@ import './app-ui.css';
 
 export const App: React.FC = () => {
   const todayKey = formatDateKey(Date.now());
+  const appLayoutRef = useRef<HTMLElement>(null);
+  const [focusedStop, setFocusedStop] = useState<IdleStop | null>(null);
   const [appMode, setAppMode] = useState<AppMode>('live');
   const [livePoints, setLivePoints] = useState<GPSPoint[]>([]);
   const [userLocation, setUserLocation] = useState<GPSPoint | null>(gpsTracker.getCurrentUserLocation());
@@ -37,6 +39,23 @@ export const App: React.FC = () => {
   const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isDevModeOpen, setIsDevModeOpen] = useState<boolean>(false);
+
+  // Keep the mobile location button above cards, including expanded checkpoints.
+  useEffect(() => {
+    const root = appLayoutRef.current;
+    const panel = root?.querySelector('.activity-panel, .journey-detail, .replay-panel');
+    if (!root || !panel) return;
+    const update = () => root.style.setProperty('--map-panel-height', `${panel.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(update);
+    observer.observe(panel);
+    update();
+    return () => observer.disconnect();
+  }, [appMode, selectedTrip]);
+
+  const handleSelectStop = (stop: IdleStop) => {
+    setIsRouteVisible(true);
+    setFocusedStop({ ...stop });
+  };
 
   // Load Trips on mount
   const refreshTrips = async () => {
@@ -147,6 +166,7 @@ export const App: React.FC = () => {
 
   // Replay Handlers
   const handleStartReplay = (trip: TripSession) => {
+    setFocusedStop(null);
     setReplayingTrip(trip);
     setReplayIndex(0);
     setIsReplaying(true);
@@ -221,12 +241,13 @@ export const App: React.FC = () => {
   };
 
   return (
-    <main className={`tracker-app app-mode-${appMode === 'replay' ? 'replay' : appMode === 'history' ? 'history' : selectedTrip ? 'detail' : liveStats.status !== 'idle' ? 'recording' : 'record'} fixed inset-0 w-full h-[100dvh] overflow-hidden select-none`}>
+    <main ref={appLayoutRef} className={`tracker-app app-mode-${appMode === 'replay' ? 'replay' : appMode === 'history' ? 'history' : selectedTrip ? 'detail' : liveStats.status !== 'idle' ? 'recording' : 'record'} fixed inset-0 w-full h-[100dvh] overflow-hidden select-none`}>
       {/* Top Floating Navigation Header */}
       <TopHeader
         currentMode={appMode}
         onSelectMode={(mode) => {
           setAppMode(mode);
+          setFocusedStop(null);
           if (mode === 'live') setSelectedTrip(null);
           if (mode !== 'replay') {
             setIsReplaying(false);
@@ -256,6 +277,8 @@ export const App: React.FC = () => {
         isRouteVisible={isRouteVisible}
         onToggleRouteVisibility={() => setIsRouteVisible(!isRouteVisible)}
         userLocation={userLocation}
+        liveStops={appMode === 'live' && !selectedTrip ? liveStats.idleStops : undefined}
+        focusedStop={focusedStop}
       />
 
       {/* Mode 1: Live Phone GPS Tracking HUD */}
@@ -268,6 +291,7 @@ export const App: React.FC = () => {
           onStop={handleStopAndSaveLive}
           onBrowseJourneys={() => { setSelectedTrip(null); setAppMode('history'); }}
           isSimulating={isSimulating}
+          onSelectStop={handleSelectStop}
         />
       )}
 
@@ -280,6 +304,7 @@ export const App: React.FC = () => {
           selectedTrip={selectedTrip}
           onSelectTrip={(trip) => {
             setSelectedTrip(trip);
+            setFocusedStop(null);
             if (trip) {
               setAppMode('live'); // ONLY switch to map when a valid trip is chosen
             }
@@ -308,6 +333,7 @@ export const App: React.FC = () => {
           onClose={() => setSelectedTrip(null)}
           onStartReplay={handleStartReplay}
           onDeleteTrip={handleDeleteTrip}
+          onSelectStop={handleSelectStop}
         />
       )}
 

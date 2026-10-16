@@ -1,4 +1,4 @@
-import { GPSPoint, TripSession, LiveTrackingStats } from '../types/track';
+import { GPSPoint, TripSession, LiveTrackingStats, IdleStop } from '../types/track';
 import {
   calculateDistanceKm,
   calculateBearing,
@@ -19,6 +19,8 @@ class GPSTrackerService {
   private isTracking = false;
   private isPaused = false;
   private points: GPSPoint[] = [];
+  private cachedStopPointCount = -1;
+  private cachedStops: IdleStop[] = [];
   private totalDistanceKm = 0;
   private maxSpeedKmh = 0;
   private sessionStartTime: number = 0;
@@ -151,10 +153,16 @@ class GPSTrackerService {
 
     const currentPoint = this.points[this.points.length - 1] || this.currentUserLocation || null;
 
+    if (this.cachedStopPointCount !== this.points.length) {
+      this.cachedStops = detectIdleStops(this.points);
+      this.cachedStopPointCount = this.points.length;
+    }
+
     return {
+      idleStops: this.cachedStops,
       currentPoint,
       pointsCount: this.points.length,
-      distanceKm: Math.round(this.totalDistanceKm * 100) / 100,
+      distanceKm: this.totalDistanceKm,
       durationSeconds,
       currentSpeedKmh: currentPoint ? currentPoint.speedKmh : 0,
       avgSpeedKmh: Math.round(avgSpeedKmh * 10) / 10,
@@ -184,6 +192,7 @@ class GPSTrackerService {
 
     // Reset clean points array (only real verified GPS fixes will be recorded)
     this.points = [];
+    this.cachedStopPointCount = -1;
     this.totalDistanceKm = 0;
     this.maxSpeedKmh = 0;
     this.sessionStartTime = Date.now();
@@ -267,7 +276,7 @@ class GPSTrackerService {
           minute: '2-digit',
         })}`;
 
-      const idleStops = detectIdleStops(finalPoints, 30, 45);
+      const idleStops = detectIdleStops(finalPoints);
 
       savedTrip = {
         id: `trip_${this.sessionStartTime}`,
@@ -277,7 +286,7 @@ class GPSTrackerService {
         endTime: now,
         points: finalPoints, // 100% exact, pure recorded points (Zero mutation)
         color: '#00f2fe', // Consistent vibrant cyan glow (No random pink)
-        distanceKm: Math.round(this.totalDistanceKm * 100) / 100,
+        distanceKm: this.totalDistanceKm,
         durationMs,
         avgSpeedKmh: Math.round(avgSpeed * 10) / 10,
         maxSpeedKmh: Math.round(this.maxSpeedKmh * 10) / 10,
@@ -292,6 +301,7 @@ class GPSTrackerService {
     this.isTracking = false;
     this.isPaused = false;
     this.points = [];
+    this.cachedStopPointCount = -1;
     this.totalDistanceKm = 0;
     this.sessionStartTime = 0;
     this.notifyState();
@@ -314,6 +324,7 @@ class GPSTrackerService {
     this.isTracking = false;
     this.isPaused = false;
     this.points = [];
+    this.cachedStopPointCount = -1;
     this.totalDistanceKm = 0;
     this.sessionStartTime = 0;
     this.notifyState();
@@ -334,6 +345,7 @@ class GPSTrackerService {
     }
 
     let calculatedSpeedKmh = 0;
+    let stationary = false;
     let computedHeading = rawHeading;
 
     if (this.points.length > 0) {
@@ -342,10 +354,11 @@ class GPSTrackerService {
       const distMeters = distKm * 1000;
       const timeDiffSec = Math.max((now - prev.timestamp) / 1000, 0.1);
 
-      // Filter stationary micro-jitter (< minDistanceDeltaMeters)
-      if (distMeters < this.minDistanceDeltaMeters) {
-        return;
-      }
+      if (now <= prev.timestamp) return;
+      // Keep a real GPS observation every 10 seconds while stationary, so
+      // place visits retain their timing without accumulating GPS jitter.
+      stationary = distMeters < this.minDistanceDeltaMeters;
+      if (stationary && now - prev.timestamp < 10000) return;
 
       // 2. Reject impossible speed spikes / GPS teleports (> 160 km/h jump)
       const impliedSpeedKmh = distKm / (timeDiffSec / 3600);
@@ -354,7 +367,7 @@ class GPSTrackerService {
         return;
       }
 
-      this.totalDistanceKm += distKm;
+      if (!stationary) this.totalDistanceKm += distKm;
 
       if (rawSpeed !== null && rawSpeed !== undefined && rawSpeed >= 0) {
         calculatedSpeedKmh = (rawSpeed * 3600) / 1000;
@@ -370,6 +383,8 @@ class GPSTrackerService {
         calculatedSpeedKmh = (rawSpeed * 3600) / 1000;
       }
     }
+
+    if (stationary) calculatedSpeedKmh = 0;
 
     if (calculatedSpeedKmh > this.maxSpeedKmh) {
       this.maxSpeedKmh = calculatedSpeedKmh;

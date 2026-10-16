@@ -1,6 +1,6 @@
 import { get, set, del, keys } from 'idb-keyval';
 import { TripSession, GPSPoint, DateGroupedTrips } from '../types/track';
-import { formatDateKey } from '../utils/geoUtils';
+import { formatDateKey, getTripStops, toMiles } from '../utils/geoUtils';
 import { generateDemoTrips } from './demoData';
 
 const TRIPS_STORE_PREFIX = 'pasttracks_trip_';
@@ -18,7 +18,7 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   mapStyle: 'cyberpunk',
   enableWakeLock: true,
-  distanceUnit: 'km',
+  distanceUnit: 'miles',
   smoothAccuracyThreshold: 35,
   highAccuracyMode: true,
 };
@@ -81,7 +81,7 @@ export async function saveTrip(trip: TripSession): Promise<void> {
 
 // Export All Trips as JSON file
 export function exportTripsAsJSON(trips: TripSession[]): void {
-  const dataStr = JSON.stringify(trips, null, 2);
+  const dataStr = JSON.stringify(trips.map(trip => ({ ...trip, distanceMiles: toMiles(trip.distanceKm), idleStops: getTripStops(trip) })), null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -100,9 +100,10 @@ export function exportTripAsGeoJSON(trip: TripSession): void {
       title: trip.title,
       date: trip.dateKey,
       distanceKm: trip.distanceKm,
+      distanceMiles: toMiles(trip.distanceKm),
       durationMs: trip.durationMs,
       avgSpeedKmh: trip.avgSpeedKmh,
-      idleStops: trip.idleStops,
+      idleStops: getTripStops(trip),
     },
     features: [
       {

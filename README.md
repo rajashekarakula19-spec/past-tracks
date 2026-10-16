@@ -49,8 +49,9 @@ The [main link](https://past-tracks.vercel.app/) opens the landing page first. C
 
 | | What you can do |
 | --- | --- |
-| 📍 **Record** | Start, pause, resume, and save GPS journeys with distance, speed, duration, and location accuracy. |
+| 📍 **Record** | Start, pause, resume, and save GPS journeys with distance in miles, speed in mph, duration, and location accuracy. |
 | 🗓️ **Rediscover** | Browse trips by date, inspect saved routes, and manage your travel history. |
+| 📌 **Remember a place** | Spend 5+ minutes within a roughly 650 ft-wide area to create a stop checkpoint—even while walking around. View arrival, departure, and time spent there. |
 | ▶️ **Relive** | Replay journeys with adjustable speed and an interactive timeline. |
 | 🎨 **Make it yours** | Switch between Garden, street, satellite, night, and city maps; toggle routes and 3D perspective. |
 | 💾 **Keep a copy** | Store trips in your browser and export all journeys as JSON or a single route as GeoJSON. |
@@ -72,6 +73,7 @@ Open [localhost:5173](http://localhost:5173). No environment variables, API keys
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Start the development server on port 5173. |
+| `npm test` | Check mile conversion, area visits, GPS gaps, and stationary recording. |
 | `npm run build` | Run TypeScript checks and build the production app in `dist/`. |
 | `npm run preview` | Preview the production build locally. |
 
@@ -86,6 +88,16 @@ Open [localhost:5173](http://localhost:5173). No environment variables, API keys
 **Finding your way around:** **Record** is your recorder, **Journeys** is your history, and the layers icon opens **Map styles**. The **More options** menu contains demo journeys, developer tools, and a link back to the welcome page. Clicking the PastTracks logo also takes you home.
 
 The tracker loads when first opened at `/#app`. Returning to the landing page through in-page navigation preserves the app’s recording and selected journey. Sample trips are added when the trip store is empty.
+
+## 📌 Stop checkpoints
+
+A checkpoint is a **place visit**, not just standing still: spending **five minutes or more within 100 meters of the arrival location** (an area roughly 650 feet across) counts, including walking around a store or nearby block.
+
+Open **Stop checkpoints** in the recorder or a saved journey’s details. Each visit shows an AM/PM arrival–departure range, time spent in the area, and a numbered marker. Select a checkpoint to center it on the map; tap its marker for the same timing details. Times use your device’s local time zone; overnight ranges include dates.
+
+Stationary GPS observations are retained without adding tiny position changes to distance. A gap of more than two minutes between reliable readings breaks a visit, so missing GPS coverage is not counted as time at a place. Older journeys can show checkpoints when their recorded points or saved stops provide enough evidence; missing historical readings cannot be reconstructed.
+
+Displayed travel distances use **miles**, and speeds use **mph**. Original metric fields remain in stored trips and exports for compatibility; exports also include `distanceMiles` and checkpoints.
 
 ## 🛠️ Under the hood
 
