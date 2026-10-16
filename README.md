@@ -12,6 +12,12 @@ Visitors arrive at a responsive welcome page with an illustrated example route, 
 
 The landing page uses warm ivory, forest green, and lime accents, with keyboard-accessible navigation, a mobile menu, and reduced-motion support. The tracker is lazy-loaded when opened. Use browser Back to return to the landing page.
 
+### PastTracks Garden map style
+
+The history sidebar and selected-trip details use matching ivory journey cards with distance, time, and lime replay controls. Date filters, multi-select deletion, and exports remain available.
+
+The tracker opens with **PastTracks Garden**, a custom vector map inspired by the welcome page: ivory roads, sage parks and buildings, muted blue water, and forest-green routes. Open **Change map style** (the layers icon) to switch between Garden and the existing street, satellite, dark, and 3D vector styles. Real map tiles and labels are provided by OpenFreeMap / OpenMapTiles / OpenStreetMap and require internet access.
+
 ## Features
 
 - **Live GPS tracking:** Start, pause, resume, and save journeys with distance, speed, duration, and location accuracy indicators.

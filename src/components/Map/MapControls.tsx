@@ -74,6 +74,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
             <button
               onClick={() => setShowLayers(!showLayers)}
               title="Change Map Style"
+              aria-label="Change map style"
+              aria-expanded={showLayers}
               className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${
                 showLayers
                   ? 'bg-white/20 text-white'
@@ -90,7 +92,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                   initial={{ opacity: 0, scale: 0.9, x: 10 }}
                   animate={{ opacity: 1, scale: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.9, x: 10 }}
-                  className="absolute right-12 top-0 w-44 z-30"
+                  className="absolute right-12 top-0 w-60 max-w-[calc(100vw-5.5rem)] z-30"
                 >
                   <GlassCard variant="elevated" className="p-2 flex flex-col gap-1.5 shadow-2xl border-white/20 bg-[#0a0d16]">
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 px-2 py-1">
@@ -99,6 +101,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                     {MAP_STYLES.map((style) => (
                       <button
                         key={style.id}
+                        aria-pressed={currentStyleId === style.id}
                         onClick={() => {
                           onSelectStyle(style);
                           setShowLayers(false);

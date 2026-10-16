@@ -12,9 +12,7 @@ body {
   background-color: #090a0f;
   color: #f4f4f5;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
+
 }
 
 /* Hide scrollbar for clean horizontal date scroller */
@@ -51,3 +49,13 @@ body {
 .animate-spin-slow {
   animation: spinSlow 8s linear infinite;
 }
+
+body.tracking-view { overflow: hidden; user-select: none; -webkit-user-select: none; }
+
+/* Garden markers match the welcome page without changing the other map styles. */
+.garden-map .gps-marker > div:nth-child(1),
+.garden-map .replay-marker > div:first-child { background: #c3d1b680; }
+.garden-map .gps-marker > div:nth-child(2) { background: #d7edac80; border-color: #8ca56c; box-shadow: 0 0 18px #78964740; }
+.garden-map .gps-marker > div:nth-child(3),
+.garden-map .replay-marker > div:nth-child(2) { background: #244c3a; box-shadow: 0 2px 8px #203c3240; --tw-ring-color: #d7edac; }
+.garden-map .gps-marker #puck-heading { border-bottom-color: #244c3a; }

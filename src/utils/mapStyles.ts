@@ -1,3 +1,4 @@
+import { gardenMapStyle } from './gardenMapStyle';
 export interface MapStyleOption {
   id: string;
   name: string;
@@ -6,6 +7,7 @@ export interface MapStyleOption {
 }
 
 export const MAP_STYLES: MapStyleOption[] = [
+  { id: 'pasttracks-garden', name: 'PastTracks Garden', url: gardenMapStyle, previewColor: '#c3d1b6' },
   {
     id: 'google-streets',
     name: 'Google Maps (Streets & Buildings)',

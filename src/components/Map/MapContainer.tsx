@@ -50,7 +50,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const [currentStyle, setCurrentStyle] = useState<MapStyleOption>(MAP_STYLES[0]);
   const [is3D, setIs3D] = useState(true);
   const [isGpsLocked, setIsGpsLocked] = useState(true);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(0);
+  const styleRef = useRef(currentStyle);
+  const routeVisibleRef = useRef(isRouteVisible);
+  routeVisibleRef.current = isRouteVisible;
+  const tripSelectionRef = useRef({ pastTrips, onSelectTrip });
+  tripSelectionRef.current = { pastTrips, onSelectTrip };
 
   // Initialize Map
   useEffect(() => {
@@ -74,11 +79,27 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     (window as any)._map = map;
 
     map.on('style.load', () => {
-      setMapLoaded(true);
       setupLayers(map);
-      updatePastLayers();
-      updateLiveLayers();
+      setMapLoaded((version) => version + 1);
     });
+
+      // Click on past route to inspect
+      map.on('click', PAST_LAYER_CORE_ID, (e) => {
+        if (e.features && e.features.length > 0) {
+          const tripId = e.features[0].properties?.id;
+          const found = tripSelectionRef.current.pastTrips.find((t) => t.id === tripId);
+          if (found) {
+            tripSelectionRef.current.onSelectTrip(found);
+          }
+        }
+      });
+
+      map.on('mouseenter', PAST_LAYER_CORE_ID, () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', PAST_LAYER_CORE_ID, () => {
+        map.getCanvas().style.cursor = '';
+      });
 
     map.on('dragstart', () => {
       if (!isReplaying) {
@@ -95,6 +116,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   // Update map style when changed
   const handleSelectStyle = (style: MapStyleOption) => {
     setCurrentStyle(style);
+    styleRef.current = style;
     if (mapRef.current) {
       mapRef.current.setStyle(style.url);
     }
@@ -102,6 +124,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   // Setup vector GeoJSON sources & high-contrast glowing line layers
   const setupLayers = (map: MapLibreMap) => {
+    const isGarden = styleRef.current.id === 'pasttracks-garden';
     // 1. Past Traces Source & Layers
     if (!map.getSource(PAST_SOURCE_ID)) {
       map.addSource(PAST_SOURCE_ID, {
@@ -118,12 +141,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#000000',
+            'line-color': isGarden ? '#fffdf4' : '#000000',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 16, 9],
-            'line-opacity': 0.85,
+            'line-opacity': isGarden ? 0.12 : 0.85,
           },
         });
       }
@@ -137,12 +160,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#00f2fe',
+            'line-color': isGarden ? '#3d6244' : '#00f2fe',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 8, 16, 18],
-            'line-opacity': 0.8,
+            'line-opacity': isGarden ? 0.12 : 0.8,
             'line-blur': 7,
           },
         });
@@ -157,33 +180,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#00f2fe',
+            'line-color': isGarden ? '#3d6244' : '#00f2fe',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5],
             'line-opacity': 1,
           },
         });
       }
 
-      // Click on past route to inspect
-      map.on('click', PAST_LAYER_CORE_ID, (e) => {
-        if (e.features && e.features.length > 0) {
-          const tripId = e.features[0].properties?.id;
-          const found = pastTrips.find((t) => t.id === tripId);
-          if (found) {
-            onSelectTrip(found);
-          }
-        }
-      });
 
-      map.on('mouseenter', PAST_LAYER_CORE_ID, () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', PAST_LAYER_CORE_ID, () => {
-        map.getCanvas().style.cursor = '';
-      });
     }
 
     // 2. Live Tracking Source & Layers
@@ -202,12 +209,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#000000',
+            'line-color': isGarden ? '#fffdf4' : '#000000',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 16, 10],
-            'line-opacity': 0.85,
+            'line-opacity': isGarden ? 0.12 : 0.85,
           },
         });
       }
@@ -221,12 +228,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#00f2fe',
+            'line-color': isGarden ? '#3d6244' : '#00f2fe',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 8, 16, 20],
-            'line-opacity': 0.8,
+            'line-opacity': isGarden ? 0.12 : 0.8,
             'line-blur': 8,
           },
         });
@@ -241,10 +248,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
-            'visibility': isRouteVisible ? 'visible' : 'none',
+            'visibility': routeVisibleRef.current ? 'visible' : 'none',
           },
           paint: {
-            'line-color': '#ffffff',
+            'line-color': isGarden ? '#244c3a' : '#ffffff',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5],
             'line-opacity': 1,
           },
@@ -284,11 +291,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                   ['linear'],
                   ['get', 'render_height'],
                   0,
-                  '#1a1f2c',
+                  isGarden ? '#d4ddca' : '#1a1f2c',
                   50,
-                  '#252e3d',
+                  isGarden ? '#c3d1b6' : '#252e3d',
                   150,
-                  '#334155',
+                  isGarden ? '#a7b99b' : '#334155',
                 ],
                 'fill-extrusion-height': [
                   'interpolate',
@@ -445,7 +452,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
-      el.className = 'relative flex items-center justify-center pointer-events-none z-50';
+      el.className = 'gps-marker relative flex items-center justify-center pointer-events-none z-50';
       el.style.width = '48px';
       el.style.height = '48px';
 
@@ -560,7 +567,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     if (!replayMarkerRef.current) {
       const el = document.createElement('div');
-      el.className = 'relative flex items-center justify-center pointer-events-none';
+      el.className = 'replay-marker relative flex items-center justify-center pointer-events-none';
       el.style.width = '44px';
       el.style.height = '44px';
       el.innerHTML = `
@@ -633,10 +640,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className={`relative w-full h-full overflow-hidden ${currentStyle.id === 'pasttracks-garden' ? 'garden-map' : ''}`}>
       {/* 3D WebGL Canvas */}
       <div ref={mapContainerRef} className="w-full h-full bg-[#090a0f]" />
 
+      {currentStyle.id === 'pasttracks-garden' && (
+        <div className="absolute bottom-0 left-0 z-20 bg-[#f8f9f2]/95 px-2 py-0.5 text-[9px] text-[#52694f] pointer-events-auto">
+          <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a>{' · '}
+          <a href="https://openmaptiles.org" target="_blank" rel="noreferrer">© OpenMapTiles</a>{' · '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>
+        </div>
+      )}
       {/* Map Interactive Controls */}
       <MapControls
         onRecenter={handleRecenter}
